@@ -40,46 +40,59 @@ def parse_site(url, selectors):
 import requests
 from bs4 import BeautifulSoup
 
+import requests
+from bs4 import BeautifulSoup
+
 def fetch_deals(category, details, country, discount_only):
     results = []
 
-    search_term = details.get("model") or generate_search_keywords(category, details)
+    search_term = details.get("model") or "smartphone"
     q = search_term.replace(" ", "-").lower()
 
     if category == "Electronics" and details.get("subcategory") == "Mobiles":
         url = f"https://www.olx.com.pk/items/q-{q}"
-        headers = {"User-Agent": "Mozilla/5.0"}
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
+        }
 
         res = requests.get(url, headers=headers)
         if res.status_code != 200:
+            print("Error fetching OLX:", res.status_code)
             return []
 
         soup = BeautifulSoup(res.text, "html.parser")
-        listings = soup.select("li.EIR5N")[:10]
 
-        for item in listings:
-            title_tag = item.select_one("span._2tW1I")
-            price_tag = item.select_one("span._89yzn")
-            url_tag = item.find("a", href=True)
-            img_tag = item.find("img")
+        # Check if OLX listings are present
+        listing_cards = soup.find_all("li", class_="EIR5N")
 
-            if not title_tag or not price_tag or not url_tag:
+        if not listing_cards:
+            print("No listings found — structure may have changed")
+            return []
+
+        for item in listing_cards:
+            try:
+                title = item.find("span", class_="_2tW1I").text.strip()
+                price = item.find("span", class_="_89yzn").text.strip()
+                url_tag = item.find("a", href=True)
+                image_tag = item.find("img")
+
+                url = "https://www.olx.com.pk" + url_tag["href"]
+                img = image_tag["src"] if image_tag and image_tag.has_attr("src") else None
+
+                results.append({
+                    "title": title,
+                    "price": price,
+                    "url": url,
+                    "img": img,
+                    "source": "OLX"
+                })
+
+            except Exception as e:
+                print("Skipping item due to error:", e)
                 continue
 
-            title = title_tag.get_text(strip=True)
-            price = price_tag.get_text(strip=True)
-            url = "https://www.olx.com.pk" + url_tag["href"]
-            img = img_tag["src"] if img_tag and img_tag.has_attr("src") else None
-
-            results.append({
-                "title": title,
-                "price": price,
-                "url": url,
-                "img": img,
-                "source": "OLX"
-            })
-
     return results
+
 
 
     # Daraz
