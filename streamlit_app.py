@@ -42,7 +42,11 @@ if st.button("Search Deals"):
         st.warning("Please enter a country/region.")
     else:
         with st.spinner("Searching deals online..."):
-            results = fetch_deals(category, details, country, discount_only)
+            results, debug = fetch_deals(category, details, country, discount_only)
+
+        st.subheader("🛠️ Debug Info")
+        for msg in debug:
+            st.write(msg)
 
         if results:
             st.subheader("Search Results")
@@ -50,7 +54,7 @@ if st.button("Search Deals"):
                 if deal.get("img"):
                     st.image(deal["img"], width=200)
                 st.markdown(f"### [{deal['title']}]({deal['url']})")
-                st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal.get('source', 'Unknown')}")
+                st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal.get('source','Unknown')}")
                 st.write("---")
         else:
             st.warning("No deals found.")
