@@ -1,174 +1,54 @@
 import requests
 from bs4 import BeautifulSoup
-import openai
-import os
-
-openai.api_key = os.getenv("OPENAI_API_KEY")
-
-def generate_search_keywords(category, details):
-    prompt = f"Generate concise search keywords for category {category} with details {details}"
-    try:
-        resp = openai.ChatCompletion.create(
-            model="gpt-4",
-            messages=[
-                {"role": "system", "content": "You are an e‑commerce assistant generating product search keywords."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=20,
-            temperature=0.5
-        )
-        return resp['choices'][0]['message']['content'].strip()
-    except:
-        return details.get("model", category)
-
-def parse_site(url, selectors):
-    resp = requests.get(url, headers={"User-Agent":"Mozilla/5.0"}, timeout=10)
-    soup = BeautifulSoup(resp.text, "html.parser")
-    results = []
-    items = soup.select(selectors['item'])
-    for item in items[:10]:
-        title = item.select_one(selectors.get('title', '')).get_text(strip=True) if selectors.get('title') else None
-        price = item.select_one(selectors.get('price', '')).get_text(strip=True) if selectors.get('price') else None
-        link = item.select_one(selectors.get('link', '')).get('href', '')
-        if selectors.get('link_prefix'):
-            link = selectors['link_prefix'] + link
-        img = item.select_one(selectors.get('img','')).get('src') if selectors.get('img') else None
-        if title and price and link:
-            results.append({"title": title, "price": price, "url": link, "img": img})
-    return results
-
-import requests
-from bs4 import BeautifulSoup
-
-import requests
-from bs4 import BeautifulSoup
 
 def fetch_deals(category, details, country, discount_only):
+    debug = []
     results = []
 
     search_term = details.get("model") or "smartphone"
+    debug.append(f"Search term: {search_term}")
+
     q = search_term.replace(" ", "-").lower()
+    debug.append(f"Search query param: {q}")
 
     if category == "Electronics" and details.get("subcategory") == "Mobiles":
         url = f"https://www.olx.com.pk/items/q-{q}"
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"
-        }
+        debug.append(f"Crawling URL: {url}")
 
+        headers = {"User-Agent": "Mozilla/5.0"}
         res = requests.get(url, headers=headers)
+        debug.append(f"HTTP status code: {res.status_code}")
+
         if res.status_code != 200:
-            print("Error fetching OLX:", res.status_code)
-            return []
+            return results, debug
 
         soup = BeautifulSoup(res.text, "html.parser")
+        cards = soup.find_all("li", class_="EIR5N")
+        debug.append(f"Found {len(cards)} listing cards")
 
-        # Check if OLX listings are present
-        listing_cards = soup.find_all("li", class_="EIR5N")
+        for item in cards[:5]:
+            title_tag = item.find("span", class_="_2tW1I")
+            price_tag = item.find("span", class_="_89yzn")
+            url_tag = item.find("a", href=True)
+            img_tag = item.find("img")
 
-        if not listing_cards:
-            print("No listings found — structure may have changed")
-            return []
-
-        for item in listing_cards:
-            try:
-                title = item.find("span", class_="_2tW1I").text.strip()
-                price = item.find("span", class_="_89yzn").text.strip()
-                url_tag = item.find("a", href=True)
-                image_tag = item.find("img")
-
-                url = "https://www.olx.com.pk" + url_tag["href"]
-                img = image_tag["src"] if image_tag and image_tag.has_attr("src") else None
-
-                results.append({
-                    "title": title,
-                    "price": price,
-                    "url": url,
-                    "img": img,
-                    "source": "OLX"
-                })
-
-            except Exception as e:
-                print("Skipping item due to error:", e)
+            if not (title_tag and price_tag and url_tag):
+                debug.append("Skipping item due to missing fields")
                 continue
 
-    return results
+            title = title_tag.text.strip()
+            price = price_tag.text.strip()
+            link = "https://www.olx.com.pk" + url_tag["href"]
+            img = img_tag["src"] if img_tag and img_tag.has_attr("src") else None
 
+            results.append({
+                "title": title,
+                "price": price,
+                "url": link,
+                "img": img,
+                "source": "OLX"
+            })
+            debug.append(f"Added deal: {title} | {price}")
 
-
-    # Daraz
-    daraz = parse_site(
-        f"https://www.daraz.pk/catalog/?q={q}",
-        selectors={
-            "item": "div[data-qa-locator='product-item']",
-            "title": "div[data-qa-locator='product-item-title']",
-            "price": "span[data-qa-locator='product-item-price']",
-            "link": "a",
-            "link_prefix": "https:",
-            "img": "img[data-src]"
-        }
-    )
-    for d in daraz:
-        if not discount_only or "%" in d['title'].lower() or "off" in d['title'].lower():
-            d['source'] = "Daraz.pk"; results.append(d)
-
-    # PriceOye (scraping search results)
-    po = parse_site(
-        f"https://www.priceoye.pk/search?q={q}",
-        selectors={
-            "item": ".product-list-item",
-            "title": ".product-title",
-            "price": ".price",
-            "link": "a",
-            "link_prefix": "https://www.priceoye.pk",
-            "img": "img"
-        }
-    )
-    for d in po:
-        d['source'] = "PriceOye"; results.append(d)
-
-    # OLX Pakistan (classified snapshot)
-    olx = parse_site(
-        f"https://www.olx.com.pk/items/q-{q}",
-        selectors={
-            "item": "li.EIR5N",
-            "title": "span._2tW0J",
-            "price": "span._89yzn",
-            "link": "a",
-            "link_prefix": "https://www.olx.com.pk",
-            "img": "img"
-        }
-    )
-    for d in olx:
-        d['source'] = "OLX Pakistan"; results.append(d)
-
-    # Telemart
-    tm = parse_site(
-        f"https://telemart.pk/catalogsearch/result/?q={q}",
-        selectors={
-            "item": "div.product-item-info",
-            "title": "a.product-item-link",
-            "price": "span.price",
-            "link": "a.product-item-link",
-            "link_prefix": "",
-            "img": "img.product-image-photo"
-        }
-    )
-    for d in tm:
-        d['source'] = "Telemart"; results.append(d)
-
-    # Shophive
-    sh = parse_site(
-        f"https://www.shophive.com/catalogsearch/result/?q={q}",
-        selectors={
-            "item": "div.product-item",
-            "title": "a.product-item-link",
-            "price": "span.price",
-            "link": "a.product-item-link",
-            "link_prefix": "",
-            "img": "img.product-image-photo"
-        }
-    )
-    for d in sh:
-        d['source'] = "Shophive"; results.append(d)
-
-    return results
+    debug.append(f"Total deals gathered: {len(results)}")
+    return results, debug
