@@ -44,17 +44,18 @@ if st.button("Search Deals"):
         with st.spinner("Searching deals online..."):
             results, debug = fetch_deals(category, details, country, discount_only)
 
-st.subheader("🛠️ Debug Info")
-for msg in debug:
-    st.write(msg)
+        st.subheader("🛠️ Debug Info")
+        if debug:
+            for msg in debug:
+                st.text(msg)
 
-if results:
-    st.subheader("Search Results")
-    for deal in results:
-        if deal.get("img"):
-            st.image(deal["img"], width=200)
-        st.markdown(f"### [{deal['title']}]({deal['url']})")
-        st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal.get('source','Unknown')}")
-        st.write("---")
-else:
-    st.warning("No deals found.")
+        if results:
+            st.subheader("🔍 Search Results")
+            for deal in results:
+                if deal.get("img"):
+                    st.image(deal["img"], width=200)
+                st.markdown(f"### [{deal['title']}]({deal['url']})")
+                st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal.get('source', 'Unknown')}")
+                st.write("---")
+        else:
+            st.warning("No deals found.")
