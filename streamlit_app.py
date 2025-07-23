@@ -46,12 +46,14 @@ if st.button("Search Deals"):
         with st.spinner("Searching deals online..."):
             results = fetch_deals(category, details, country, discount_only)
             
-            if results:
-                for deal in results:
-    st.image(deal.get("img"), width=200) if deal.get("img") else None
-    st.markdown(f"### [{deal['title']}]({deal['url']})")
-    st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal['source']}")
-    st.write("---")
-
-            else:
-                st.info("No deals found. Try adjusting the search criteria.")
+            # Render results with image and link
+if results:
+    st.subheader("Search Results")
+    for deal in results:
+        if deal.get("img"):
+            st.image(deal["img"], width=200)
+        st.markdown(f"### [{deal['title']}]({deal['url']})")
+        st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal.get('source', 'Unknown')}")
+        st.write("---")
+else:
+    st.warning("No deals found.")
