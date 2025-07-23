@@ -37,10 +37,50 @@ def parse_site(url, selectors):
             results.append({"title": title, "price": price, "url": link, "img": img})
     return results
 
+import requests
+from bs4 import BeautifulSoup
+
 def fetch_deals(category, details, country, discount_only):
     results = []
+
     search_term = details.get("model") or generate_search_keywords(category, details)
-    q = search_term.replace(" ", "+")
+    q = search_term.replace(" ", "-").lower()
+
+    if category == "Electronics" and details.get("subcategory") == "Mobiles":
+        url = f"https://www.olx.com.pk/items/q-{q}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+
+        res = requests.get(url, headers=headers)
+        if res.status_code != 200:
+            return []
+
+        soup = BeautifulSoup(res.text, "html.parser")
+        listings = soup.select("li.EIR5N")[:10]
+
+        for item in listings:
+            title_tag = item.select_one("span._2tW1I")
+            price_tag = item.select_one("span._89yzn")
+            url_tag = item.find("a", href=True)
+            img_tag = item.find("img")
+
+            if not title_tag or not price_tag or not url_tag:
+                continue
+
+            title = title_tag.get_text(strip=True)
+            price = price_tag.get_text(strip=True)
+            url = "https://www.olx.com.pk" + url_tag["href"]
+            img = img_tag["src"] if img_tag and img_tag.has_attr("src") else None
+
+            results.append({
+                "title": title,
+                "price": price,
+                "url": url,
+                "img": img,
+                "source": "OLX"
+            })
+
+    return results
+
 
     # Daraz
     daraz = parse_site(
