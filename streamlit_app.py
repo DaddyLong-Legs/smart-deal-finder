@@ -1,59 +1,56 @@
 import streamlit as st
 from utils.crawler import fetch_deals
 
-st.set_page_config(page_title="Smart Deal Finder", layout="centered")
+st.set_page_config(page_title="Smart Deal Finder", layout="wide")
 
-st.title("🔎 Smart Deal Finder")
+st.title("🛍️ Smart Deal Finder")
+st.markdown("Find the best online deals in your country using AI-powered search and web crawling.")
 
-# 1. Category Selection
-category = st.selectbox("Choose a category:", ["Electronics", "Garments"])
+# 1. Category selection
+category = st.selectbox("Select Category", ["Electronics", "Garments"])
 
-# 2. Subcategory Options
 details = {}
+
+# 2. Sub-category / Model input
 if category == "Electronics":
-    subcat = st.radio("Choose type:", ["Mobiles", "Laptops"])
+    subcat = st.selectbox("Choose Subcategory", ["Mobiles", "Laptops"])
     details["subcategory"] = subcat
-    
-    mode = st.radio(f"What do you want to search for in {subcat}?", ["Available deals", "Search for specific model"])
-    
-    if mode == "Search for specific model":
-        model = st.text_input(f"Enter {subcat} model name (e.g., iPhone 14, Dell XPS 13):")
-        details["model"] = model
-    details["search_mode"] = mode
+
+    model = st.text_input(f"Enter {subcat} model to search for deals (optional)")
+    details["model"] = model.strip()
 
 elif category == "Garments":
-    subcat = st.radio("Who are you shopping for?", ["Men", "Women", "Kids"])
+    subcat = st.selectbox("Choose Garment Type", ["Men", "Women", "Kids"])
     details["subcategory"] = subcat
 
     if subcat == "Kids":
-        age_range = st.selectbox("Select age group:", ["0-2", "3-5", "6-9", "10-12", "13+"])
-        details["age_range"] = age_range
+        size = st.text_input("Enter size or age range (e.g., 2-4 yrs, size 6)")
+        details["size"] = size.strip()
     else:
-        clothing_type = st.multiselect("Select categories:", ["Shirts", "Trousers", "Shoes", "Accessories"])
-        details["clothing_type"] = clothing_type
+        garment_type = st.multiselect("Select categories", ["Shirts", "Trousers", "Suits", "Shoes"])
+        details["types"] = garment_type
 
-# 3. Country Selection
-country = st.text_input("Enter the country or region to search in (e.g., Pakistan):")
+# 3. Country/Region input
+country = st.text_input("Enter your country or region", value="Pakistan")
 
-# 4. Discount Filter
-discount_only = st.checkbox("Show only discounted deals?", value=True)
+# 4. Discount filter
+discount_only = st.checkbox("Only show discounted deals", value=False)
 
-# 5. Submit Button
+# Search trigger and results
 if st.button("Search Deals"):
     if not country:
         st.warning("Please enter a country/region.")
     else:
         with st.spinner("Searching deals online..."):
             results = fetch_deals(category, details, country, discount_only)
-            
-            # Render results with image and link
-if results:
-    st.subheader("Search Results")
-    for deal in results:
-        if deal.get("img"):
-            st.image(deal["img"], width=200)
-        st.markdown(f"### [{deal['title']}]({deal['url']})")
-        st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal.get('source', 'Unknown')}")
-        st.write("---")
-else:
-    st.warning("No deals found.")
+
+        if results:
+            st.subheader("Search Results")
+            for deal in results:
+                if deal.get("img"):
+                    st.image(deal["img"], width=200)
+                st.markdown(f"### [{deal['title']}]({deal['url']})")
+                st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal.get('source', 'Unknown')}")
+                st.write("---")
+        else:
+            st.warning("No deals found.")
