@@ -48,8 +48,10 @@ if st.button("Search Deals"):
             
             if results:
                 for deal in results:
-                    st.markdown(f"### [{deal['title']}]({deal['url']})")
-                    st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal['source']}")
-                    st.write("---")
+    st.image(deal.get("img"), width=200) if deal.get("img") else None
+    st.markdown(f"### [{deal['title']}]({deal['url']})")
+    st.markdown(f"**Price:** {deal['price']}  \n**Source:** {deal['source']}")
+    st.write("---")
+
             else:
                 st.info("No deals found. Try adjusting the search criteria.")
